@@ -8,12 +8,15 @@ export const handler = async (event) => {
       await readFile(new URL("./data/wardPolys.json", import.meta.url))
     );
 
-    if (!event || !event.body || !event.body.address ) {
-      throw new Error("Need address parameter")
+    if (!event || !event.body) {
+      throw new Error("Need parameters in body")
     }
 
     // Convert address to lowercase
     let body = JSON.parse(event.body)
+    if (!body.address) {
+      throw new Error("Need address parameter")
+    }
     let address = body.address.toLowerCase();
 
     var newAddress = address;
