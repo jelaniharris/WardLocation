@@ -4,7 +4,7 @@ dotenv.config();
 
 /**
  * Geocode an address using Geocod.io
- * @param {string} address 
+ * @param {string} address
  * @returns {address, lat, lng, accuracy, accuracy_type, source}
  */
 export const geocodeAddress = async (address) => {
@@ -16,6 +16,71 @@ export const geocodeAddress = async (address) => {
     },
   });
   return response.data;
+};
+
+export const queryCensusGeocodeAddress = async (address) => {
+  const response = await axios.get(
+    "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress",
+    {
+      params: {
+        address: address,
+        format: "json",
+        benchmark: "Public_AR_Current",
+        vintage: "Current_Current",
+      },
+    }
+  );
+
+  const data = response.data;
+  let lat, lng;
+  let censusTractNumber;
+  let matchedAddress;
+
+  if (data && data.result) {
+    // Get the coordinates too
+
+    if (data.result.addressMatches && data.result.addressMatches.length > 0) {
+      // Get the first matching address
+      const addressMatch = data.result.addressMatches[0];
+
+      if (addressMatch.coordinates) {
+        lat = addressMatch.coordinates.y;
+        lng = addressMatch.coordinates.x;
+      }
+
+      if (addressMatch.matchedAddress) {
+        matchedAddress = addressMatch.matchedAddress;
+      }
+
+      // Get the tracts from the geographics
+      const tracts = addressMatch.geographies["Census Tracts"];
+      if (tracts.length == 0) {
+        throw new Error("Census tracts length is zero");
+      }
+      // Get the tract name
+      const tractName = tracts[0]["NAME"];
+      if (!tractName) {
+        throw new Error("Could not find name in census tract");
+      }
+
+      // Parse the census tract number from the name using regex
+      // It's crunchy, but it works
+      const regexp = /^Census Tract ([\S]+)/g;
+      const tractNumber = [...tractName.matchAll(regexp)].map((m) => m[1]);
+      console.log(tractNumber);
+      if (tractNumber) {
+        censusTractNumber = tractNumber[0];
+      }
+    }
+  }
+
+  // No data or no addresses matched
+  return {
+    censusTractNumber,
+    lat,
+    lng,
+    matchedAddress
+  };
 };
 
 //Latitude is y and Longitude is x.

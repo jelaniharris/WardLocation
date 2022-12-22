@@ -1,12 +1,50 @@
 import {readFile} from 'fs/promises'
-import { geocodeAddress, relationPP } from "./util.mjs";
+import { geocodeAddress, queryCensusGeocodeAddress, relationPP } from "./util.mjs";
 
 export const handler = async (event) => {
-  try {
+
+  const transformAddress = (address) => {
+    let newAddress;
+    // If address already has cleveland, then don't do anything
+    if (address.toLowerCase().includes("cleveland")) {
+      newAddress = address;
+    } else {
+      //adds Cleveland for more specific location determination if the user does not enter
+      newAddress = address + ", Cleveland OH";
+    }
+    return newAddress;
+  }
+
+  const checkWardPolygon = async (coordinate) => {
     // Get the ward info
     const wards = JSON.parse(
       await readFile(new URL("./data/wardPolys.json", import.meta.url))
     );
+
+    let matchingWards = wards.map((element) => {
+
+      var wardCheck = relationPP(
+        { lat: coordinate.lat, lng: coordinate.lng },
+        element.points
+      );
+
+      if (wardCheck > 0) {
+        return {
+          name: element.name,
+          wardNumber: element.ward,
+          person: element.person,
+        };
+      }
+    });
+
+    // Filter matchingWards
+    matchingWards = matchingWards.filter((ward) => ward != null);
+    return matchingWards;
+  }
+
+
+  try {
+    console.log(event);
 
     if (!event || !event.body) {
       throw new Error("Need parameters in body")
@@ -19,53 +57,59 @@ export const handler = async (event) => {
     }
     let address = body.address.toLowerCase();
 
-    var newAddress = address;
-    // If address already has cleveland, then don't do anything
-    if (address.toLowerCase().includes("cleveland")) {
-      newAddress = address;
-    } else {
-      //adds Cleveland for more specific location determination if the user does not enter
-      newAddress = address + ", Cleveland OH";
-    }
+    // Transform the address by appending city and state if we have to
+    var newAddress = transformAddress(address);
 
-    const geocodeResponse = await geocodeAddress(newAddress);
+    // First let's query the census for the address
+    // We can get the coordinate 
+    const censusQueryResponse = await queryCensusGeocodeAddress(newAddress);
+    console.log("CENSUS:", censusQueryResponse);
 
-    let lambdaData = {};
+    let lambdaData = {
+      givenAddress: newAddress,
+    };
 
-    if (geocodeResponse && geocodeResponse.address) {
-      const geocodeAddress = geocodeResponse.address;
-
-      let matchingWards = wards.map((element) => {
-
-        var wardCheck = relationPP(
-          { lat: geocodeResponse.lat, lng: geocodeResponse.lng },
-          element.points
-        );
-
-        if (wardCheck > 0) {
-          return {
-            name: element.name,
-            wardNumber: element.ward,
-            person: element.person,
-          };
-        }
+    if (censusQueryResponse && censusQueryResponse.matchedAddress && censusQueryResponse.censusTractNumber) {
+      let matchingWards = await checkWardPolygon({
+        lat: censusQueryResponse.lat, lng: censusQueryResponse.lng
       });
-
-      // Filter matchingWards
-      matchingWards = matchingWards.filter((ward) => ward != null);
-
       lambdaData = {
+        ...lambdaData,
         success: true,
-        givenAddress: newAddress,
-        geocodedData: geocodeResponse,
+        censusTractNumber: censusQueryResponse.censusTractNumber,
+        geocodedData: {
+          address: censusQueryResponse.matchedAddress,
+          lat: censusQueryResponse.lat,
+          lng: censusQueryResponse.lng,
+          accuracy: 1,
+          accuracy_type: "Census",
+          source: "Census",
+        },
         matchingWards: matchingWards,
       };
+
     } else {
-      // No address was geocoded
-      lambdaData = {
-        success: false,
-        givenAddress: newAddress,
-      };
+      const geocodeResponse = await geocodeAddress(newAddress);
+
+      if (geocodeResponse && geocodeResponse.address) {
+  
+        let matchingWards = await checkWardPolygon(geocodeResponse);
+        
+        lambdaData = {
+          ...lambdaData,
+          success: true,
+          geocodedData: geocodeResponse,
+          censusTractNumber: null,
+          matchingWards: matchingWards,
+        };
+      } else {
+        // No address was geocoded
+        lambdaData = {
+          ...lambdaData,
+          success: false,
+        };
+      }
+
     }
     const response = {
       statusCode: 200,
