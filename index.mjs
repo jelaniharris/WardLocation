@@ -8,6 +8,8 @@ export const handler = async (event) => {
       await readFile(new URL("./data/wardPolys.json", import.meta.url))
     );
 
+    console.log(event);
+
     if (!event || !event.body || !event.body.address ) {
       throw new Error("Need address parameter")
     }
