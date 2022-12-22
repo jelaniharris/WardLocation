@@ -8,8 +8,12 @@ export const handler = async (event) => {
       await readFile(new URL("./data/wardPolys.json", import.meta.url))
     );
 
+    if (!event || !event.body || !event.body.address ) {
+      throw new Error("Need address parameter")
+    }
+
     // Convert address to lowercase
-    let address = event.address.toLowerCase();
+    let address = event.payload.address.toLowerCase();
 
     var newAddress = address;
     // If address already has cleveland, then don't do anything
@@ -48,10 +52,9 @@ export const handler = async (event) => {
 
       lambdaData = {
         success: true,
-        geocodedData: geocodeResponse.address,
         givenAddress: newAddress,
+        geocodedData: geocodeResponse,
         matchingWards: matchingWards,
-        geocodedAddress: geocodeAddress
       };
     } else {
       // No address was geocoded
