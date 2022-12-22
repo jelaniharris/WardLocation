@@ -13,7 +13,7 @@ export const handler = async (event) => {
     }
 
     // Convert address to lowercase
-    let address = event.payload.address.toLowerCase();
+    let address = event.body.address.toLowerCase();
 
     var newAddress = address;
     // If address already has cleveland, then don't do anything
