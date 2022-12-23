@@ -1,5 +1,6 @@
 import {readFile} from 'fs/promises'
 import { geocodeAddress, queryCensusGeocodeAddress, relationPP } from "./util.mjs";
+import querystring from 'querystring'
 
 export const handler = async (event) => {
 
@@ -44,14 +45,19 @@ export const handler = async (event) => {
 
 
   try {
-    console.log(event);
-
     if (!event || !event.body) {
       throw new Error("Need parameters in body")
     }
 
-    // Convert address to lowercase
-    let body = JSON.parse(event.body)
+    let body;
+    if (event.body.charAt(0) === '{') {// It's JSON
+      body = JSON.parse(event.body);
+    } else { // It's a www-urlencoded-form
+
+      let parts = querystring.decode(event.body);
+      body = parts;
+    }
+
     if (!body.address) {
       throw new Error("Need address parameter")
     }
@@ -63,7 +69,6 @@ export const handler = async (event) => {
     // First let's query the census for the address
     // We can get the coordinate 
     const censusQueryResponse = await queryCensusGeocodeAddress(newAddress);
-    console.log("CENSUS:", censusQueryResponse);
 
     let lambdaData = {
       givenAddress: newAddress,
