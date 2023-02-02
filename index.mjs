@@ -22,6 +22,8 @@ export const handler = async (event) => {
       await readFile(new URL("./data/wardPolys.json", import.meta.url))
     );
 
+    // For each matching ward, check to see if each point is within
+    // the polygon
     let matchingWards = wards.map((element) => {
 
       var wardCheck = relationPP(
@@ -45,6 +47,7 @@ export const handler = async (event) => {
 
 
   try {
+    // Check for body parameters
     if (!event || !event.body) {
       throw new Error("Need parameters in body")
     }
@@ -74,6 +77,7 @@ export const handler = async (event) => {
       givenAddress: newAddress,
     };
 
+    // If we got a response from the census query
     if (censusQueryResponse && censusQueryResponse.matchedAddress && censusQueryResponse.censusTractNumber) {
       let matchingWards = await checkWardPolygon({
         lat: censusQueryResponse.lat, lng: censusQueryResponse.lng
@@ -94,6 +98,7 @@ export const handler = async (event) => {
       };
 
     } else {
+      // No response from the census, then get the geocode with Geocodio
       const geocodeResponse = await geocodeAddress(newAddress);
 
       if (geocodeResponse && geocodeResponse.address) {
