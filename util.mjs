@@ -83,8 +83,6 @@ export const queryCensusGeocodeAddress = async (address) => {
   };
 };
 
-//Latitude is y and Longitude is x.
-
 /**
  * Check to see if the point is in the bounds of the polygon
  * @param {lat, lng} point
@@ -92,6 +90,7 @@ export const queryCensusGeocodeAddress = async (address) => {
  * @returns boolean if the point is in the bounds of the polygon
  */
 export const pointInBounds = (point, polygon) => {
+  // Latitude is y and Longitude is x.
   let minX = polygon[0].lng;
   let maxX = polygon[0].lng;
   let minY = polygon[0].lat;
