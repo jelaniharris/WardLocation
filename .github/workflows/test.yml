@@ -2,14 +2,16 @@ name: Tests
 on: [push, workflow_dispatch, pull_request]
 jobs:
   build:
+    name: Run CI Tests
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - name: Test using NodeJs 18
-    - uses: actions/setup-node@v3
+      uses: actions/setup-node@v3
       with:
         node-version: 18
         cache: npm
-    - run: npm install
+    - name: Install packages
+      run: npm install
     - name: Run tests
       run: npm test
