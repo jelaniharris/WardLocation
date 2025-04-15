@@ -17,7 +17,7 @@ export const transformAddress = (address) => {
 export const checkWardPolygon = async (coordinate) => {
   // Get the ward info
   const wards = JSON.parse(
-    await readFile(new URL("./data/wardPolys.json", import.meta.url))
+    await readFile(new URL("./data/wardPolys-2025.json", import.meta.url))
   );
 
   // For each matching ward, check to see if each point is within
